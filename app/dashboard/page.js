@@ -4,6 +4,9 @@ import { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 
+// Force dynamic rendering to avoid build errors
+export const dynamic = 'force-dynamic';
+
 const CANVAS_SIZES = {
   'twitter-banner': { width: 1500, height: 500, label: 'Twitter Banner' },
   'twitter-post': { width: 1200, height: 675, label: 'Twitter Post' },

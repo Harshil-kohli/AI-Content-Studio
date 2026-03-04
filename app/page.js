@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 
+// Force dynamic rendering
+export const dynamic = 'force-dynamic';
+
 export default function Home() {
   const [prompt, setPrompt] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
