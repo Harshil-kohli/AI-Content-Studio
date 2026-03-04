@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 
@@ -20,7 +20,7 @@ const CANVAS_SIZES = {
   'avatar': { width: 400, height: 400, label: 'Avatar/Profile Picture' },
 };
 
-export default function Dashboard() {
+function DashboardContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const canvasRef = useRef(null);
@@ -1232,5 +1232,20 @@ export default function Dashboard() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function Dashboard() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block w-12 h-12 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mb-4"></div>
+          <p className="text-gray-400">Loading canvas editor...</p>
+        </div>
+      </div>
+    }>
+      <DashboardContent />
+    </Suspense>
   );
 }
