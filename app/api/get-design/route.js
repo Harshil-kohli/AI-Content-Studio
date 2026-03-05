@@ -37,19 +37,31 @@ export async function GET(request) {
       );
     }
 
-    // Convert old Unsplash URLs to Picsum URLs for compatibility
-    if (design.imageUrl && design.imageUrl.includes('source.unsplash.com')) {
-      console.log('Converting old Unsplash URL to Picsum...');
-      const timestamp = Date.now();
-      const seed = Math.floor(Math.random() * 10000);
-      design.imageUrl = `https://picsum.photos/seed/${seed}-${timestamp}/1200/800`;
+    // Convert old problematic URLs (Lorem Flickr, old Unsplash) to fresh ones
+    if (design.imageUrl && !design.imageUrl.startsWith('data:')) {
+      let needsUpdate = false;
       
-      // Update in database
-      await collection.updateOne(
-        { _id: new ObjectId(id) },
-        { $set: { imageUrl: design.imageUrl } }
-      );
-      console.log('Updated design with new image URL');
+      // Check if it's a Lorem Flickr URL (causes cat images)
+      if (design.imageUrl.includes('loremflickr.com')) {
+        console.log('⚠️ Found Lorem Flickr URL (cat image), removing...');
+        design.imageUrl = null; // Remove it so user can regenerate
+        needsUpdate = true;
+      }
+      // Check if it's old source.unsplash.com (CORS issues)
+      else if (design.imageUrl.includes('source.unsplash.com')) {
+        console.log('⚠️ Found old Unsplash URL, removing...');
+        design.imageUrl = null; // Remove it so user can regenerate
+        needsUpdate = true;
+      }
+      
+      // Update in database if needed
+      if (needsUpdate) {
+        await collection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: { imageUrl: design.imageUrl } }
+        );
+        console.log('✅ Removed problematic image URL from design');
+      }
     }
 
     return NextResponse.json({ design });

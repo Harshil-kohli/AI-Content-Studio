@@ -18,30 +18,31 @@ export async function POST() {
     const db = client.db('AI-posts');
     const collection = db.collection('designs');
 
-    // Find all designs with Unsplash URLs
+    // Find all designs with problematic URLs (Lorem Flickr or old Unsplash)
     const oldDesigns = await collection
-      .find({ imageUrl: { $regex: 'source.unsplash.com' } })
+      .find({ 
+        $or: [
+          { imageUrl: { $regex: 'loremflickr.com' } },
+          { imageUrl: { $regex: 'source.unsplash.com' } }
+        ]
+      })
       .toArray();
 
-    console.log(`Found ${oldDesigns.length} designs with old Unsplash URLs`);
+    console.log(`Found ${oldDesigns.length} designs with problematic URLs`);
 
     let updatedCount = 0;
 
-    // Update each design with a new Picsum URL
+    // Remove problematic URLs from each design
     for (const design of oldDesigns) {
-      const timestamp = Date.now() + updatedCount; // Ensure unique seeds
-      const seed = Math.floor(Math.random() * 10000);
-      const newImageUrl = `https://picsum.photos/seed/${seed}-${timestamp}/1200/800`;
-
       await collection.updateOne(
         { _id: design._id },
-        { $set: { imageUrl: newImageUrl } }
+        { $set: { imageUrl: null } } // Remove the URL so user can regenerate
       );
 
       updatedCount++;
     }
 
-    console.log(`Updated ${updatedCount} designs`);
+    console.log(`Removed problematic URLs from ${updatedCount} designs`);
 
     return NextResponse.json({ 
       success: true,

@@ -155,12 +155,19 @@ export async function GET() {
       .limit(20)
       .toArray();
 
-    // Convert old Unsplash URLs to Picsum URLs for all designs
+    // Remove old problematic URLs (Lorem Flickr cat images, old Unsplash)
     const updatedDesigns = designs.map(design => {
-      if (design.imageUrl && design.imageUrl.includes('source.unsplash.com')) {
-        const timestamp = Date.now();
-        const seed = Math.floor(Math.random() * 10000);
-        design.imageUrl = `https://picsum.photos/seed/${seed}-${timestamp}/1200/800`;
+      if (design.imageUrl && !design.imageUrl.startsWith('data:')) {
+        // Remove Lorem Flickr URLs (cat images)
+        if (design.imageUrl.includes('loremflickr.com')) {
+          console.log('Removing Lorem Flickr URL from design:', design._id);
+          design.imageUrl = null;
+        }
+        // Remove old Unsplash URLs (CORS issues)
+        else if (design.imageUrl.includes('source.unsplash.com')) {
+          console.log('Removing old Unsplash URL from design:', design._id);
+          design.imageUrl = null;
+        }
       }
       return design;
     });
