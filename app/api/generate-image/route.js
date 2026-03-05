@@ -40,30 +40,39 @@ export async function POST(request) {
     // Try Unsplash API first (best keyword matching, free 50 requests/hour)
     if (process.env.UNSPLASH_ACCESS_KEY) {
       try {
+        console.log('Trying Unsplash API with key:', process.env.UNSPLASH_ACCESS_KEY.substring(0, 10) + '...');
         const unsplashQuery = encodeURIComponent(keywords);
-        const unsplashResponse = await fetch(`https://api.unsplash.com/search/photos?query=${unsplashQuery}&per_page=15&orientation=landscape`, {
+        const unsplashUrl = `https://api.unsplash.com/search/photos?query=${unsplashQuery}&per_page=15&orientation=landscape`;
+        console.log('Unsplash URL:', unsplashUrl);
+        
+        const unsplashResponse = await fetch(unsplashUrl, {
           headers: {
             'Authorization': `Client-ID ${process.env.UNSPLASH_ACCESS_KEY}`
           }
         });
         
+        console.log('Unsplash response status:', unsplashResponse.status);
+        
         if (unsplashResponse.ok) {
           const unsplashData = await unsplashResponse.json();
+          console.log('Unsplash results count:', unsplashData.results?.length || 0);
+          
           if (unsplashData.results && unsplashData.results.length > 0) {
             const randomIndex = Math.floor(Math.random() * Math.min(unsplashData.results.length, 10));
             imageUrl = unsplashData.results[randomIndex].urls.regular;
-            console.log('Using Unsplash image:', imageUrl);
+            console.log('✅ Using Unsplash image:', imageUrl);
           } else {
-            console.log('No Unsplash results for:', keywords);
+            console.log('⚠️ No Unsplash results for:', keywords);
           }
         } else {
-          console.warn('Unsplash API error:', unsplashResponse.status);
+          const errorData = await unsplashResponse.json();
+          console.error('❌ Unsplash API error:', unsplashResponse.status, errorData);
         }
       } catch (unsplashError) {
-        console.warn('Unsplash API failed:', unsplashError.message);
+        console.error('❌ Unsplash API failed:', unsplashError.message);
       }
     } else {
-      console.log('Unsplash API key not configured, skipping...');
+      console.log('⚠️ Unsplash API key not configured, skipping...');
     }
     
     // Try Pexels API second (best quality)
