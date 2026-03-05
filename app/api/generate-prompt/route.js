@@ -23,7 +23,41 @@ export async function POST(request) {
 
     console.log('Using N1N API key:', apiKey.substring(0, 10) + '...');
 
-    // Use N1N API
+    // Generate unique seed based on timestamp and random number
+    const uniqueSeed = Date.now() + Math.random() * 1000000;
+    const randomVariation = Math.floor(Math.random() * 10) + 1;
+    
+    // Random style variations to ensure diversity
+    const styles = [
+      'minimalist and modern',
+      'bold and vibrant',
+      'elegant and sophisticated',
+      'playful and energetic',
+      'dark and moody',
+      'bright and cheerful',
+      'professional and clean',
+      'artistic and creative',
+      'vintage and retro',
+      'futuristic and tech-inspired'
+    ];
+    
+    const tones = [
+      'inspirational',
+      'motivational',
+      'thought-provoking',
+      'empowering',
+      'uplifting',
+      'reflective',
+      'encouraging',
+      'positive',
+      'authentic',
+      'impactful'
+    ];
+    
+    const randomStyle = styles[Math.floor(Math.random() * styles.length)];
+    const randomTone = tones[Math.floor(Math.random() * tones.length)];
+
+    // Use N1N API with high temperature for more creativity
     const response = await fetch('https://api.n1n.ai/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -35,15 +69,40 @@ export async function POST(request) {
         messages: [
           {
             role: 'system',
-            content: 'You are a professional social media content creator and prompt engineer. Your job is to take brief user ideas and transform them into detailed, descriptive prompts for creating social media content. Include specific details about visual style, tone, colors, composition, target audience, and key messaging. Keep responses concise but comprehensive (2-3 sentences max).'
+            content: `You are a highly creative social media content creator. Generate UNIQUE and DIVERSE prompts every single time - never repeat the same ideas. Each response must be completely different from any previous response.
+
+CRITICAL RULES:
+- Generate ORIGINAL content every time, never repeat quotes or ideas
+- Use varied vocabulary, different perspectives, and unique angles
+- Mix different themes: success, growth, mindfulness, creativity, relationships, career, health, happiness, etc.
+- Vary the format: questions, statements, commands, observations, metaphors
+- Include specific visual details: colors, composition, style, mood
+- Make each prompt feel fresh and unexpected
+- Think outside the box - be creative and surprising
+
+Current variation seed: ${uniqueSeed}
+Style preference: ${randomStyle}
+Tone preference: ${randomTone}`
           },
           {
             role: 'user',
-            content: `Transform this brief idea into a detailed, descriptive prompt for creating social media content: "${userPrompt}"`
+            content: `Create a completely UNIQUE and ORIGINAL social media content prompt about: "${userPrompt}". 
+
+Make it variation #${randomVariation} - ensure it's totally different from common quotes. Include:
+1. A unique angle or perspective (not cliché)
+2. Specific visual style (${randomStyle})
+3. Emotional tone (${randomTone})
+4. Target audience consideration
+5. Key message that stands out
+
+Be creative and unexpected! Maximum 2-3 sentences.`
           }
         ],
-        temperature: 0.7,
-        max_tokens: 200,
+        temperature: 0.95, // High temperature for maximum creativity
+        max_tokens: 250,
+        top_p: 0.95, // Nucleus sampling for diversity
+        frequency_penalty: 1.5, // Penalize repetition heavily
+        presence_penalty: 1.5, // Encourage new topics
       }),
     });
 

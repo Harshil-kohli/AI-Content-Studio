@@ -324,6 +324,8 @@ function DashboardContent() {
 
   const downloadCanvas = async () => {
     try {
+      showToast('Preparing download...');
+      
       // Create a temporary canvas for download
       const downloadCanvas = document.createElement('canvas');
       const ctx = downloadCanvas.getContext('2d');
@@ -339,24 +341,58 @@ function DashboardContent() {
       // Draw image if exists
       if ((canvasContent.type === 'image' || canvasContent.type === 'image_with_text') && canvasContent.data) {
         try {
+          let imageDataUrl = canvasContent.data;
+          
+          // If the image is from an external source (not already base64), proxy it through our server
+          // This solves CORS issues in production by converting the image to base64
+          if (!imageDataUrl.startsWith('data:')) {
+            console.log('Proxying external image to avoid CORS issues...');
+            const proxyResponse = await fetch('/api/proxy-image', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ imageUrl: imageDataUrl }),
+            });
+            
+            if (proxyResponse.ok) {
+              const proxyData = await proxyResponse.json();
+              imageDataUrl = proxyData.dataUrl;
+              console.log('Image proxied successfully');
+            } else {
+              console.warn('Proxy failed, trying direct load');
+            }
+          }
+          
+          // Load and draw the image
           const img = document.createElement('img');
-          img.crossOrigin = 'anonymous';
           
           await new Promise((resolve, reject) => {
-            const timeout = setTimeout(() => reject(new Error('Timeout')), 5000);
+            const timeout = setTimeout(() => {
+              reject(new Error('Image load timeout'));
+            }, 15000);
+            
             img.onload = () => {
               clearTimeout(timeout);
-              ctx.drawImage(img, 0, 0, size.width, size.height);
-              resolve();
+              try {
+                ctx.drawImage(img, 0, 0, size.width, size.height);
+                console.log('Image drawn successfully');
+                resolve();
+              } catch (drawError) {
+                console.error('Error drawing image:', drawError);
+                reject(drawError);
+              }
             };
-            img.onerror = () => {
+            
+            img.onerror = (error) => {
               clearTimeout(timeout);
-              reject(new Error('Image load failed'));
+              console.error('Image load error:', error);
+              reject(error);
             };
-            img.src = canvasContent.data;
+            
+            img.src = imageDataUrl;
           });
         } catch (error) {
           console.warn('Could not load image for download:', error);
+          showToast('Image could not be loaded, downloading text only', 'error');
         }
       }
 
@@ -461,10 +497,10 @@ function DashboardContent() {
       link.href = downloadCanvas.toDataURL('image/png');
       link.click();
       
-      showToast('Canvas downloaded with text!');
+      showToast('Downloaded successfully!');
     } catch (error) {
       console.error('Error downloading canvas:', error);
-      showToast('Failed to download canvas', 'error');
+      showToast('Failed to download. Try again.', 'error');
     }
   };
 

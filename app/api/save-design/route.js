@@ -40,6 +40,29 @@ export async function POST(request) {
       updatedAt: new Date(),
     };
 
+    // Convert external image URLs to base64 for better compatibility
+    if (design.imageUrl && !design.imageUrl.startsWith('data:')) {
+      try {
+        console.log('Converting external image to base64...');
+        const imageResponse = await fetch(design.imageUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          },
+        });
+        
+        if (imageResponse.ok) {
+          const imageBuffer = await imageResponse.arrayBuffer();
+          const base64Image = Buffer.from(imageBuffer).toString('base64');
+          const contentType = imageResponse.headers.get('content-type') || 'image/jpeg';
+          design.imageUrl = `data:${contentType};base64,${base64Image}`;
+          console.log('Image converted to base64 successfully');
+        }
+      } catch (conversionError) {
+        console.warn('Could not convert image to base64:', conversionError);
+        // Keep original URL if conversion fails
+      }
+    }
+
     // If designId is provided, update existing design
     if (designData.designId) {
       const { ObjectId } = require('mongodb');
