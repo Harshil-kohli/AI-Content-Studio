@@ -23,119 +23,77 @@ export async function POST(request) {
 
     console.log('Image description from AI:', imageDescription);
     
-    const apiKey = process.env.API;
-    
-    if (!apiKey) {
-      return NextResponse.json(
-        { error: 'N1N API key not configured' },
-        { status: 500 }
-      );
-    }
-
-    // Use AI to enhance the image description for better results
-    const enhanceResponse = await fetch('https://api.n1n.ai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey.trim()}`,
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: `You are an expert at extracting precise image search keywords. Your job is to identify the EXACT main subject and key visual elements from descriptions.
-
-CRITICAL RULES:
-1. Identify the PRIMARY subject first (person, object, animal, place, etc.)
-2. Add 2-3 most important descriptive words (color, style, setting)
-3. Keep it SHORT and PRECISE (3-6 words maximum)
-4. Use CONCRETE, SEARCHABLE terms (not abstract concepts)
-5. Focus on VISUAL elements only
-6. NO metaphors, NO abstract ideas, NO emotions - only what's VISIBLE
-
-Examples:
-Input: "A luxury sports car at sunset"
-Output: "red sports car sunset"
-
-Input: "Modern office with laptop and coffee"
-Output: "modern office desk laptop"
-
-Input: "Beautiful mountain landscape"
-Output: "mountain landscape sunset"
-
-Input: "Motivational quote about success"
-Output: "business success office"
-
-Input: "Colorful abstract background"
-Output: "colorful gradient abstract"
-
-Input: "Person working on computer"
-Output: "person laptop working"
-
-REMEMBER: Be SPECIFIC and LITERAL. If they say "car", output "car". If they say "office", output "office". Don't overthink it!
-
-Respond with ONLY 3-6 keywords separated by spaces, nothing else.`
-          },
-          {
-            role: 'user',
-            content: `Extract precise image search keywords from: "${imageDescription}"`
-          }
-        ],
-        temperature: 0.1, // Very low for consistency
-        max_tokens: 30,
-      }),
-    });
-
-    if (!enhanceResponse.ok) {
-      console.error('Failed to enhance image description');
-      // Continue with original description
-    }
-
-    let enhancedDescription = imageDescription;
-    
-    if (enhanceResponse.ok) {
-      const enhanceData = await enhanceResponse.json();
-      enhancedDescription = enhanceData.choices[0]?.message?.content?.trim() || imageDescription;
-      console.log('AI extracted keywords:', enhancedDescription);
-    }
-    
-    // Clean and prepare keywords for search
-    const keywords = enhancedDescription
+    // Simple keyword extraction - just clean the description
+    const keywords = imageDescription
       .toLowerCase()
       .replace(/[^\w\s]/g, '') // Remove punctuation
       .split(' ')
       .filter(word => word.length > 2) // Filter very short words
-      .slice(0, 4) // Take first 4 keywords for better accuracy
-      .join('+');
-    
-    console.log('Final search keywords:', keywords);
+      .slice(0, 5) // Take first 5 keywords
+      .join(' '); // Use space for better search
     
     console.log('Search keywords:', keywords);
     
     // Use multiple free image APIs with fallbacks
     let imageUrl = null;
     
-    // Try Pexels API (free, no key needed for basic use via their CDN)
-    try {
-      const pexelsQuery = encodeURIComponent(enhancedDescription);
-      const pexelsResponse = await fetch(`https://api.pexels.com/v1/search?query=${pexelsQuery}&per_page=15&orientation=landscape`, {
-        headers: {
-          'Authorization': process.env.PEXELS_API_KEY || 'YOUR_PEXELS_KEY_HERE'
+    // Try Unsplash API first (best keyword matching, free 50 requests/hour)
+    if (process.env.UNSPLASH_ACCESS_KEY) {
+      try {
+        const unsplashQuery = encodeURIComponent(keywords);
+        const unsplashResponse = await fetch(`https://api.unsplash.com/search/photos?query=${unsplashQuery}&per_page=15&orientation=landscape`, {
+          headers: {
+            'Authorization': `Client-ID ${process.env.UNSPLASH_ACCESS_KEY}`
+          }
+        });
+        
+        if (unsplashResponse.ok) {
+          const unsplashData = await unsplashResponse.json();
+          if (unsplashData.results && unsplashData.results.length > 0) {
+            const randomIndex = Math.floor(Math.random() * Math.min(unsplashData.results.length, 10));
+            imageUrl = unsplashData.results[randomIndex].urls.regular;
+            console.log('Using Unsplash image:', imageUrl);
+          } else {
+            console.log('No Unsplash results for:', keywords);
+          }
+        } else {
+          console.warn('Unsplash API error:', unsplashResponse.status);
         }
-      });
-      
-      if (pexelsResponse.ok) {
-        const pexelsData = await pexelsResponse.json();
-        if (pexelsData.photos && pexelsData.photos.length > 0) {
-          // Pick a random photo from results for variety
-          const randomIndex = Math.floor(Math.random() * Math.min(pexelsData.photos.length, 10));
-          imageUrl = pexelsData.photos[randomIndex].src.large;
-          console.log('Using Pexels image:', imageUrl);
-        }
+      } catch (unsplashError) {
+        console.warn('Unsplash API failed:', unsplashError.message);
       }
-    } catch (pexelsError) {
-      console.warn('Pexels API failed:', pexelsError.message);
+    } else {
+      console.log('Unsplash API key not configured, skipping...');
+    }
+    
+    // Try Pexels API second (best quality)
+    if (!imageUrl && process.env.PEXELS_API_KEY && process.env.PEXELS_API_KEY !== 'YOUR_PEXELS_API_KEY_HERE') {
+      try {
+        const pexelsQuery = encodeURIComponent(keywords);
+        const pexelsResponse = await fetch(`https://api.pexels.com/v1/search?query=${pexelsQuery}&per_page=15&orientation=landscape`, {
+          headers: {
+            'Authorization': process.env.PEXELS_API_KEY
+          }
+        });
+        
+        if (pexelsResponse.ok) {
+          const pexelsData = await pexelsResponse.json();
+          if (pexelsData.photos && pexelsData.photos.length > 0) {
+            // Pick a random photo from results for variety
+            const randomIndex = Math.floor(Math.random() * Math.min(pexelsData.photos.length, 10));
+            imageUrl = pexelsData.photos[randomIndex].src.large;
+            console.log('Using Pexels image:', imageUrl);
+          } else {
+            console.log('No Pexels results for:', keywords);
+          }
+        } else {
+          console.warn('Pexels API error:', pexelsResponse.status);
+        }
+      } catch (pexelsError) {
+        console.warn('Pexels API failed:', pexelsError.message);
+      }
+    } else {
+      console.log('Pexels API key not configured, skipping...');
     }
     
     // Fallback 1: Try Pixabay (free, requires API key)
@@ -160,20 +118,17 @@ Respond with ONLY 3-6 keywords separated by spaces, nothing else.`
     // Fallback 2: Use Lorem Flickr (keyword-based, free, no API key)
     if (!imageUrl) {
       // Lorem Flickr provides real photos based on keywords
-      const flickrKeywords = keywords.replace(/\+/g, ',');
-      imageUrl = `https://loremflickr.com/1200/800/${flickrKeywords}?random=${Date.now()}`;
-      console.log('Using Lorem Flickr image:', imageUrl);
+      const flickrKeywords = keywords.replace(/\s+/g, ',');
+      imageUrl = `https://loremflickr.com/1200/800/${flickrKeywords}?lock=${Date.now()}`;
+      console.log('Using Lorem Flickr with keywords:', flickrKeywords);
+      console.log('Lorem Flickr URL:', imageUrl);
     }
     
-    console.log('Final image URL:', {
-      url: imageUrl,
-      keywords: keywords,
-      description: enhancedDescription
-    });
+    console.log('Final image URL:', imageUrl);
     
     return NextResponse.json({ 
       imageUrl: imageUrl,
-      keywords: enhancedDescription,
+      keywords: keywords,
       originalKeywords: imageDescription,
       success: true 
     });

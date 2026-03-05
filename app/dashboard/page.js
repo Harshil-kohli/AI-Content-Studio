@@ -417,14 +417,15 @@ function DashboardContent() {
           yPosition = size.height * 0.5;
         }
 
-        // Set font
-        ctx.font = `bold ${textStyle.fontSize}px ${textStyle.fontFamily}`;
+        // Use actual font size without scaling (download uses full resolution)
+        const downloadFontSize = textStyle.fontSize;
+        ctx.font = `bold ${downloadFontSize}px ${textStyle.fontFamily}`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
 
         // Measure text for background
         const lines = textContent.split('\n');
-        const lineHeight = textStyle.fontSize * 1.2;
+        const lineHeight = downloadFontSize * 1.2;
         const maxWidth = size.width * 0.8;
         
         // Word wrap
