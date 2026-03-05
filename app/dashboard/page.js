@@ -42,12 +42,13 @@ function DashboardContent() {
   const [textStyle, setTextStyle] = useState({
     fontSize: 48,
     fontFamily: 'Inter',
-    color: '#000000',
+    color: '#ffffff', // White by default
     gradientEnabled: false,
     gradientFrom: '#a855f7',
     gradientTo: '#ec4899',
     backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    backgroundEnabled: true,
+    backgroundEnabled: false, // Disabled by default
+    textShadowEnabled: true, // Enabled by default for better visibility
     textAlign: 'center'
   });
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
@@ -480,8 +481,8 @@ function DashboardContent() {
             ctx.fillStyle = textStyle.color;
           }
           
-          // Add text shadow for better visibility
-          if (!textStyle.backgroundEnabled) {
+          // Add text shadow for better visibility (if enabled)
+          if (textStyle.textShadowEnabled) {
             ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
             ctx.shadowBlur = 10;
             ctx.shadowOffsetX = 2;
@@ -998,6 +999,17 @@ function DashboardContent() {
                       </div>
                     )}
 
+                    {/* Text Shadow Toggle */}
+                    <div className="flex items-center justify-between">
+                      <label className="text-gray-300 text-xs">Text Shadow</label>
+                      <button
+                        onClick={() => setTextStyle({ ...textStyle, textShadowEnabled: !textStyle.textShadowEnabled })}
+                        className={`w-12 h-6 rounded-full transition-all ${textStyle.textShadowEnabled ? 'bg-purple-600' : 'bg-gray-600'}`}
+                      >
+                        <div className={`w-5 h-5 bg-white rounded-full transition-all ${textStyle.textShadowEnabled ? 'ml-6' : 'ml-1'}`} />
+                      </button>
+                    </div>
+
                     {/* Background Toggle */}
                     <div className="flex items-center justify-between">
                       <label className="text-gray-300 text-xs">Text Background</label>
@@ -1180,10 +1192,14 @@ function DashboardContent() {
                               WebkitBackgroundClip: 'text',
                               WebkitTextFillColor: 'transparent',
                               backgroundClip: 'text',
-                              filter: 'drop-shadow(2px 2px 4px rgba(0,0,0,0.9)) drop-shadow(-2px -2px 4px rgba(0,0,0,0.9))'
+                              ...(textStyle.textShadowEnabled && {
+                                filter: 'drop-shadow(2px 2px 4px rgba(0,0,0,0.9)) drop-shadow(-2px -2px 4px rgba(0,0,0,0.9))'
+                              })
                             } : {
                               color: textStyle.color,
-                              textShadow: '2px 2px 8px rgba(0,0,0,0.9), -2px -2px 8px rgba(0,0,0,0.9), 0 0 20px rgba(0,0,0,0.8)'
+                              ...(textStyle.textShadowEnabled && {
+                                textShadow: '2px 2px 8px rgba(0,0,0,0.9), -2px -2px 8px rgba(0,0,0,0.9), 0 0 20px rgba(0,0,0,0.8)'
+                              })
                             })
                           }}
                         >
@@ -1241,9 +1257,14 @@ function DashboardContent() {
                           WebkitBackgroundClip: 'text',
                           WebkitTextFillColor: 'transparent',
                           backgroundClip: 'text',
-                          filter: 'drop-shadow(2px 2px 4px rgba(0,0,0,0.9)) drop-shadow(-2px -2px 4px rgba(0,0,0,0.9))'
+                          ...(textStyle.textShadowEnabled && {
+                            filter: 'drop-shadow(2px 2px 4px rgba(0,0,0,0.9)) drop-shadow(-2px -2px 4px rgba(0,0,0,0.9))'
+                          })
                         } : {
-                          color: textStyle.color
+                          color: textStyle.color,
+                          ...(textStyle.textShadowEnabled && {
+                            textShadow: '2px 2px 8px rgba(0,0,0,0.9), -2px -2px 8px rgba(0,0,0,0.9), 0 0 20px rgba(0,0,0,0.8)'
+                          })
                         })
                       }}
                     >

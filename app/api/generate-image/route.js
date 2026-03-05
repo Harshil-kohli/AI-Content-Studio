@@ -44,35 +44,46 @@ export async function POST(request) {
         messages: [
           {
             role: 'system',
-            content: `You are an expert at creating detailed image search queries. Convert user descriptions into highly specific, detailed search terms that will find the perfect image.
+            content: `You are an expert at extracting precise image search keywords. Your job is to identify the EXACT main subject and key visual elements from descriptions.
 
-Rules:
-- Extract the MAIN subject/object
-- Include specific visual details (colors, lighting, mood, composition)
-- Add style keywords (professional, artistic, minimalist, vibrant, etc.)
-- Keep it concise but descriptive (5-10 words max)
-- Focus on what's VISIBLE in the image
-- Use photography/visual terms
+CRITICAL RULES:
+1. Identify the PRIMARY subject first (person, object, animal, place, etc.)
+2. Add 2-3 most important descriptive words (color, style, setting)
+3. Keep it SHORT and PRECISE (3-6 words maximum)
+4. Use CONCRETE, SEARCHABLE terms (not abstract concepts)
+5. Focus on VISUAL elements only
+6. NO metaphors, NO abstract ideas, NO emotions - only what's VISIBLE
 
 Examples:
-Input: "sunset mountains"
-Output: "golden sunset mountain peaks dramatic sky landscape"
+Input: "A luxury sports car at sunset"
+Output: "red sports car sunset"
 
-Input: "office workspace"
-Output: "modern minimalist office desk laptop natural light"
+Input: "Modern office with laptop and coffee"
+Output: "modern office desk laptop"
 
-Input: "abstract gradient"
-Output: "smooth colorful gradient abstract background purple pink"
+Input: "Beautiful mountain landscape"
+Output: "mountain landscape sunset"
 
-Respond with ONLY the enhanced search query, nothing else.`
+Input: "Motivational quote about success"
+Output: "business success office"
+
+Input: "Colorful abstract background"
+Output: "colorful gradient abstract"
+
+Input: "Person working on computer"
+Output: "person laptop working"
+
+REMEMBER: Be SPECIFIC and LITERAL. If they say "car", output "car". If they say "office", output "office". Don't overthink it!
+
+Respond with ONLY 3-6 keywords separated by spaces, nothing else.`
           },
           {
             role: 'user',
-            content: `Enhance this image description: "${imageDescription}"`
+            content: `Extract precise image search keywords from: "${imageDescription}"`
           }
         ],
-        temperature: 0.3,
-        max_tokens: 50,
+        temperature: 0.1, // Very low for consistency
+        max_tokens: 30,
       }),
     });
 
@@ -86,21 +97,77 @@ Respond with ONLY the enhanced search query, nothing else.`
     if (enhanceResponse.ok) {
       const enhanceData = await enhanceResponse.json();
       enhancedDescription = enhanceData.choices[0]?.message?.content?.trim() || imageDescription;
-      console.log('Enhanced description:', enhancedDescription);
+      console.log('AI extracted keywords:', enhancedDescription);
     }
     
-    // Generate a unique seed from the description for consistent but varied images
-    const seed = enhancedDescription.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    const timestamp = Date.now();
-    const uniqueSeed = `${seed}-${timestamp}`;
+    // Clean and prepare keywords for search
+    const keywords = enhancedDescription
+      .toLowerCase()
+      .replace(/[^\w\s]/g, '') // Remove punctuation
+      .split(' ')
+      .filter(word => word.length > 2) // Filter very short words
+      .slice(0, 4) // Take first 4 keywords for better accuracy
+      .join('+');
     
-    // Use Picsum Photos - reliable, CORS-friendly, and works with server-side fetching
-    // This service provides high-quality stock photos without CORS issues
-    const imageUrl = `https://picsum.photos/seed/${uniqueSeed}/1200/800`;
+    console.log('Final search keywords:', keywords);
     
-    console.log('Generated image URL:', {
+    console.log('Search keywords:', keywords);
+    
+    // Use multiple free image APIs with fallbacks
+    let imageUrl = null;
+    
+    // Try Pexels API (free, no key needed for basic use via their CDN)
+    try {
+      const pexelsQuery = encodeURIComponent(enhancedDescription);
+      const pexelsResponse = await fetch(`https://api.pexels.com/v1/search?query=${pexelsQuery}&per_page=15&orientation=landscape`, {
+        headers: {
+          'Authorization': process.env.PEXELS_API_KEY || 'YOUR_PEXELS_KEY_HERE'
+        }
+      });
+      
+      if (pexelsResponse.ok) {
+        const pexelsData = await pexelsResponse.json();
+        if (pexelsData.photos && pexelsData.photos.length > 0) {
+          // Pick a random photo from results for variety
+          const randomIndex = Math.floor(Math.random() * Math.min(pexelsData.photos.length, 10));
+          imageUrl = pexelsData.photos[randomIndex].src.large;
+          console.log('Using Pexels image:', imageUrl);
+        }
+      }
+    } catch (pexelsError) {
+      console.warn('Pexels API failed:', pexelsError.message);
+    }
+    
+    // Fallback 1: Try Pixabay (free, requires API key)
+    if (!imageUrl && process.env.PIXABAY_API_KEY) {
+      try {
+        const pixabayQuery = encodeURIComponent(keywords);
+        const pixabayResponse = await fetch(`https://pixabay.com/api/?key=${process.env.PIXABAY_API_KEY}&q=${pixabayQuery}&image_type=photo&orientation=horizontal&per_page=20`);
+        
+        if (pixabayResponse.ok) {
+          const pixabayData = await pixabayResponse.json();
+          if (pixabayData.hits && pixabayData.hits.length > 0) {
+            const randomIndex = Math.floor(Math.random() * Math.min(pixabayData.hits.length, 10));
+            imageUrl = pixabayData.hits[randomIndex].largeImageURL;
+            console.log('Using Pixabay image:', imageUrl);
+          }
+        }
+      } catch (pixabayError) {
+        console.warn('Pixabay API failed:', pixabayError.message);
+      }
+    }
+    
+    // Fallback 2: Use Lorem Flickr (keyword-based, free, no API key)
+    if (!imageUrl) {
+      // Lorem Flickr provides real photos based on keywords
+      const flickrKeywords = keywords.replace(/\+/g, ',');
+      imageUrl = `https://loremflickr.com/1200/800/${flickrKeywords}?random=${Date.now()}`;
+      console.log('Using Lorem Flickr image:', imageUrl);
+    }
+    
+    console.log('Final image URL:', {
       url: imageUrl,
-      seed: uniqueSeed,
+      keywords: keywords,
       description: enhancedDescription
     });
     

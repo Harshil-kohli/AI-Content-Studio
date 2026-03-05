@@ -37,6 +37,21 @@ export async function GET(request) {
       );
     }
 
+    // Convert old Unsplash URLs to Picsum URLs for compatibility
+    if (design.imageUrl && design.imageUrl.includes('source.unsplash.com')) {
+      console.log('Converting old Unsplash URL to Picsum...');
+      const timestamp = Date.now();
+      const seed = Math.floor(Math.random() * 10000);
+      design.imageUrl = `https://picsum.photos/seed/${seed}-${timestamp}/1200/800`;
+      
+      // Update in database
+      await collection.updateOne(
+        { _id: new ObjectId(id) },
+        { $set: { imageUrl: design.imageUrl } }
+      );
+      console.log('Updated design with new image URL');
+    }
+
     return NextResponse.json({ design });
   } catch (error) {
     console.error('Error fetching design:', error);

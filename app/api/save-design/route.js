@@ -155,7 +155,17 @@ export async function GET() {
       .limit(20)
       .toArray();
 
-    return NextResponse.json({ designs });
+    // Convert old Unsplash URLs to Picsum URLs for all designs
+    const updatedDesigns = designs.map(design => {
+      if (design.imageUrl && design.imageUrl.includes('source.unsplash.com')) {
+        const timestamp = Date.now();
+        const seed = Math.floor(Math.random() * 10000);
+        design.imageUrl = `https://picsum.photos/seed/${seed}-${timestamp}/1200/800`;
+      }
+      return design;
+    });
+
+    return NextResponse.json({ designs: updatedDesigns });
   } catch (error) {
     console.error('Error fetching designs:', error);
     return NextResponse.json(
