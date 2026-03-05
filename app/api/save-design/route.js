@@ -47,15 +47,24 @@ export async function POST(request) {
         const imageResponse = await fetch(design.imageUrl, {
           headers: {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Accept': 'image/*',
           },
+          redirect: 'follow', // Follow redirects
         });
         
         if (imageResponse.ok) {
           const imageBuffer = await imageResponse.arrayBuffer();
-          const base64Image = Buffer.from(imageBuffer).toString('base64');
-          const contentType = imageResponse.headers.get('content-type') || 'image/jpeg';
-          design.imageUrl = `data:${contentType};base64,${base64Image}`;
-          console.log('Image converted to base64 successfully');
+          
+          if (imageBuffer.byteLength > 0) {
+            const base64Image = Buffer.from(imageBuffer).toString('base64');
+            const contentType = imageResponse.headers.get('content-type') || 'image/jpeg';
+            design.imageUrl = `data:${contentType};base64,${base64Image}`;
+            console.log('Image converted to base64 successfully, size:', imageBuffer.byteLength, 'bytes');
+          } else {
+            console.warn('Received empty image data');
+          }
+        } else {
+          console.warn('Image fetch failed:', imageResponse.status);
         }
       } catch (conversionError) {
         console.warn('Could not convert image to base64:', conversionError);

@@ -347,18 +347,25 @@ function DashboardContent() {
           // This solves CORS issues in production by converting the image to base64
           if (!imageDataUrl.startsWith('data:')) {
             console.log('Proxying external image to avoid CORS issues...');
-            const proxyResponse = await fetch('/api/proxy-image', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ imageUrl: imageDataUrl }),
-            });
-            
-            if (proxyResponse.ok) {
-              const proxyData = await proxyResponse.json();
-              imageDataUrl = proxyData.dataUrl;
-              console.log('Image proxied successfully');
-            } else {
-              console.warn('Proxy failed, trying direct load');
+            try {
+              const proxyResponse = await fetch('/api/proxy-image', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ imageUrl: imageDataUrl }),
+              });
+              
+              if (proxyResponse.ok) {
+                const proxyData = await proxyResponse.json();
+                imageDataUrl = proxyData.dataUrl;
+                console.log('Image proxied successfully');
+              } else {
+                const errorData = await proxyResponse.json();
+                console.error('Proxy failed:', errorData);
+                console.warn('Continuing with original URL (may fail due to CORS)');
+              }
+            } catch (proxyError) {
+              console.error('Proxy request failed:', proxyError);
+              console.warn('Continuing with original URL (may fail due to CORS)');
             }
           }
           

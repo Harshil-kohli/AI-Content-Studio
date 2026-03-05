@@ -89,26 +89,23 @@ Respond with ONLY the enhanced search query, nothing else.`
       console.log('Enhanced description:', enhancedDescription);
     }
     
-    // Use Unsplash API for better quality images
+    // Generate a unique seed from the description for consistent but varied images
+    const seed = enhancedDescription.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
     const timestamp = Date.now();
-    const searchQuery = encodeURIComponent(enhancedDescription);
+    const uniqueSeed = `${seed}-${timestamp}`;
     
-    // Try multiple image sources for better results
-    const unsplashUrl = `https://source.unsplash.com/1200x800/?${searchQuery}&sig=${timestamp}`;
-    const picsumUrl = `https://picsum.photos/seed/${searchQuery}/1200/800`;
+    // Use Picsum Photos - reliable, CORS-friendly, and works with server-side fetching
+    // This service provides high-quality stock photos without CORS issues
+    const imageUrl = `https://picsum.photos/seed/${uniqueSeed}/1200/800`;
     
-    // Alternative: Use Pexels-style URL (works with keywords)
-    const pexelsStyleUrl = `https://images.pexels.com/photos/1200/800/?auto=compress&cs=tinysrgb&dpr=2&h=800&w=1200&q=${searchQuery}`;
-    
-    console.log('Generated image URLs:', {
-      unsplash: unsplashUrl,
-      picsum: picsumUrl,
-      enhanced: enhancedDescription
+    console.log('Generated image URL:', {
+      url: imageUrl,
+      seed: uniqueSeed,
+      description: enhancedDescription
     });
     
     return NextResponse.json({ 
-      imageUrl: unsplashUrl,
-      fallbackUrl: picsumUrl,
+      imageUrl: imageUrl,
       keywords: enhancedDescription,
       originalKeywords: imageDescription,
       success: true 
