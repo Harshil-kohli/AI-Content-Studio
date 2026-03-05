@@ -381,8 +381,29 @@ function DashboardContent() {
             img.onload = () => {
               clearTimeout(timeout);
               try {
-                ctx.drawImage(img, 0, 0, size.width, size.height);
-                console.log('Image drawn successfully');
+                // Calculate aspect ratio to maintain image proportions (object-fit: cover)
+                const imgAspect = img.width / img.height;
+                const canvasAspect = size.width / size.height;
+                
+                let drawWidth, drawHeight, offsetX, offsetY;
+                
+                if (imgAspect > canvasAspect) {
+                  // Image is wider than canvas - fit to height
+                  drawHeight = size.height;
+                  drawWidth = drawHeight * imgAspect;
+                  offsetX = (size.width - drawWidth) / 2;
+                  offsetY = 0;
+                } else {
+                  // Image is taller than canvas - fit to width
+                  drawWidth = size.width;
+                  drawHeight = drawWidth / imgAspect;
+                  offsetX = 0;
+                  offsetY = (size.height - drawHeight) / 2;
+                }
+                
+                // Draw image with cover effect (centered and cropped)
+                ctx.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);
+                console.log('Image drawn successfully with aspect ratio preserved');
                 resolve();
               } catch (drawError) {
                 console.error('Error drawing image:', drawError);
